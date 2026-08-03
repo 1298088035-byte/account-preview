@@ -964,6 +964,10 @@ function setSyncStatus(status){
     const now = new Date();
     const stamp = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
     el.title = '云端已同步 ' + stamp + '（团队成员打开链接即可看到最新数据）';
+  } else if(status === 'local'){
+    el.classList.remove('saving');
+    txt.textContent = '本地模式';
+    el.title = '只读模式：数据已加载，修改不会同步到云端';
   } else if(status === 'error'){
     el.classList.add('saving');
     const errSize = (JSON.stringify(profiles).length + JSON.stringify(state).length);
