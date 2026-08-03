@@ -859,48 +859,43 @@ let fileSHA = null;          // GitHub 文件的 SHA（更新文件时需要）
 /* 从 GitHub 拉取数据 */
 async function cloudGet(){
   const token = getGithubToken();
-  if(!token) return null; // 未配置 Token
-  
+  const headers = {
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  if(token){
+    headers['Authorization'] = `token ${token}`;
+  }
+
   try{
-    const res = await fetch(GITHUB_API(), {
-      headers: {
-        'Authorization': `token ${token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const res = await fetch(GITHUB_API(), { headers });
     if(res.status === 404){
-      // 文件不存在，返回空
       return null;
     }
     if(!res.ok) return null;
     const data = await res.json();
-    // 保存 SHA 用于后续更新
     fileSHA = data.sha;
-    // 解码 base64 内容
     const content = atob(data.content);
     return JSON.parse(content);
   }catch(e){ console.warn('[cloudGet]', e); return null; }
 }
-
 /* 推送数据到 GitHub */
 async function cloudPut(obj){
   const token = getGithubToken();
-  if(!token) return false; // 未配置 Token
-  
+  if(!token) return false; // 未配置 Token 无法写入
+
   try{
     const content = JSON.stringify(obj);
     const base64 = btoa(unescape(encodeURIComponent(content)));
-    
+
     const body = {
       message: `update data ${new Date().toISOString()}`,
       content: base64
     };
-    
-    // 如果文件存在，需要 sha
+
     if(fileSHA){
       body.sha = fileSHA;
     }
-    
+
     const res = await fetch(GITHUB_API(), {
       method: 'PUT',
       headers: {
@@ -910,22 +905,15 @@ async function cloudPut(obj){
       },
       body: JSON.stringify(body)
     });
-    
+
     if(res.ok){
       const data = await res.json();
       fileSHA = data.content?.sha || data.sha;
       lastSyncAt = Date.now();
       return true;
     }
-    
-    // Log error details
-    const text = await res.text();
-    console.warn('[cloudPut] failed:', res.status, res.statusText, text);
     return false;
-  }catch(e){
-    console.warn('[cloudPut] error:', e.message);
-    return false;
-  }
+  }catch(e){ console.warn('[cloudPut]', e); return false; }
 }
 
 /* 触发 debounce 同步（在 saveState/saveProfiles 中调用） */
