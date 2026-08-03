@@ -918,6 +918,12 @@ async function cloudPut(obj){
 
 /* 触发 debounce 同步（在 saveState/saveProfiles 中调用） */
 function scheduleCloudSync(){
+  const token = getGithubToken();
+  if(!token){
+    // 无 Token 时不尝试同步，显示本地模式
+    setSyncStatus('local');
+    return;
+  }
   clearTimeout(syncTimer);
   setSyncStatus('syncing');
   syncTimer = setTimeout(async ()=>{
