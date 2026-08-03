@@ -1985,35 +1985,45 @@ function bindEvents(){
 
 /* 初始化 GitHub Token（首次使用时配置） */
 function initGithubToken(){
-  let token = getGithubToken();
+  // 1. 优先从 localStorage 获取（如果之前已配置）
+  let token = null;
+  try { token = localStorage.getItem('github_token'); } catch(e) {}
   if(token) return token;
   
-  // 如果 URL 中有 token 参数，自动配置
-  const hashParams = new URLSearchParams(location.hash.slice(1));
-  const urlToken = hashParams.get('token');
-  if(urlToken){
-    localStorage.setItem('github_token', urlToken);
-    // 清除 URL 中的 token 参数（安全考虑）
-    try{
-      const newHash = location.hash.replace(/[?&]token=[^&]*/, '').replace(/^#/, '#').replace(/^\?/, '');
-      history.replaceState(null, '', location.pathname + location.search + (newHash || ''));
-    }catch(e){}
-    return urlToken;
-  }
-  
-  // 弹出输入框让用户配置
-  token = prompt('请输入你的 GitHub Personal Access Token:\n\n（在 GitHub Settings > Developer settings > Personal access tokens 生成，需要 repo 权限）\n\nToken 只会保存在你本地浏览器，不会上传到服务器。');
-  if(token){
-    token = token.trim();
-    if(token){
-      localStorage.setItem('github_token', token);
-      toast('GitHub Token 已配置');
-      return token;
+  // 2. 检查 URL hash 参数 #token=xxx
+  try{
+    const hashParams = new URLSearchParams(location.hash.slice(1));
+    let urlToken = hashParams.get('token');
+    if(urlToken){
+      try{ localStorage.setItem('github_token', urlToken); }catch(e){}
+      // 清除 URL 中的 token 参数（安全考虑）
+      try{
+        const newHash = location.hash.replace(/[?&]token=[^&]*/, '').replace(/^#/, '#').replace(/^\?/, '');
+        history.replaceState(null, '', location.pathname + location.search + (newHash || ''));
+      }catch(e){}
+      return urlToken;
     }
-  }
+  } catch(e) {}
+  
+  // 3. 检查 URL query 参数 ?token=xxx
+  try{
+    const urlParams = new URLSearchParams(location.search);
+    let queryToken = urlParams.get('token');
+    if(queryToken){
+      try{ localStorage.setItem('github_token', queryToken); }catch(e){}
+      // 清除 URL 中的 token 参数
+      try{
+        const newSearch = location.search.replace(/[?&]token=[^&]*/, '').replace(/^\?&/, '?').replace(/^\?$/, '');
+        history.replaceState(null, '', location.pathname + newSearch + location.hash);
+      }catch(e){}
+      return queryToken;
+    }
+  } catch(e) {}
+  
+  // 4. 没有 Token，返回空字符串（使用本地模式）
+  console.log('[GitHub] 未配置 Token，使用本地模式。如需云端同步，请添加 #token=YOUR_TOKEN 到 URL');
   return '';
 }
-
 (async () => {
   try{
     // 初始化 GitHub Token
